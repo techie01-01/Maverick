@@ -102,11 +102,22 @@ try {
   await new Promise(r => setTimeout(r, 800));
   await page.screenshot({ path: path.join(outDir, '09-reports.png') });
 
-  // 11. Catalogue
-  console.log('Capturing: Catalogue Products & Plans');
-  await page.goto('http://localhost:4000/app/catalogue', { waitUntil: 'networkidle0' });
+  // 11. Catalogue: Products, Plans & Taxes
+  console.log('Capturing: Products Catalogue');
+  await page.goto('http://localhost:4000/app/products', { waitUntil: 'networkidle0' });
   await new Promise(r => setTimeout(r, 800));
+  await page.screenshot({ path: path.join(outDir, '10-products.png') });
   await page.screenshot({ path: path.join(outDir, '10-catalogue.png') });
+
+  console.log('Capturing: Plans');
+  await page.goto('http://localhost:4000/app/plans', { waitUntil: 'networkidle0' });
+  await new Promise(r => setTimeout(r, 800));
+  await page.screenshot({ path: path.join(outDir, '10-plans.png') });
+
+  console.log('Capturing: Taxes');
+  await page.goto('http://localhost:4000/app/taxes', { waitUntil: 'networkidle0' });
+  await new Promise(r => setTimeout(r, 800));
+  await page.screenshot({ path: path.join(outDir, '10-taxes.png') });
 
   // 12. Customer Portal
   console.log('Capturing: Customer Portal');
@@ -129,3 +140,4 @@ try {
   await browser.close();
   server.kill('SIGTERM');
 }
+

@@ -82,7 +82,9 @@ shows their own records.
 
 *Screen:* `/app/products`, `/app/plans`, `/app/taxes`
 
-![Products Catalogue and Plans](docs/screenshots/10-catalogue.png)
+![Products Catalogue & Variants](docs/screenshots/10-products.png)
+![Plans & Lifecycle Configuration](docs/screenshots/10-plans.png)
+![Tax Rules and Rates](docs/screenshots/10-taxes.png)
 </details>
 
 <details open>
