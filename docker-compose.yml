@@ -24,3 +24,4 @@ volumes:
   brightloop-data:
     name: brightloop-data
     driver: local
+

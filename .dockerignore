@@ -10,3 +10,4 @@ graphify-out
 .env.*
 server/data/*.db*
 server/data/*.sqlite*
+
