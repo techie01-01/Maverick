@@ -66,3 +66,21 @@ jobs:
           path: client/dist/
           retention-days: 7
 
+  docker:
+    name: Docker Container Build & Run
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t brightloop:latest .
+
+      - name: Test Docker container run & health
+        run: |
+          docker run -d --name test-app -p 4000:4000 brightloop:latest
+          sleep 6
+          curl -f http://127.0.0.1:4000/api/health || (docker logs test-app && exit 1)
+          docker rm -f test-app
+
+
