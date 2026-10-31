@@ -1080,4 +1080,4 @@ A complete continuous integration pipeline is configured at [`.github/workflows/
 
 ## License
 
-MIT — built as a demonstration project for the Brightloop Subscription Management brief.
+MIT — built as a demonstration project for the Brightloop Subscription Management brief
