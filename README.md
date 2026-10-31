@@ -10,6 +10,7 @@ recurring revenue — without a spreadsheet anywhere in the loop.
 ![Brightloop](https://img.shields.io/badge/stack-React%20%2B%20Express%20%2B%20SQLite-4f46e5)
 ![API](https://img.shields.io/badge/API-70%2B%20endpoints-10b981)
 ![Tests](https://img.shields.io/badge/smoke%20tests-76%20passing-10b981)
+![CI/CD](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-2088FF?logo=github-actions&logoColor=white)
 
 ---
 
@@ -17,14 +18,14 @@ recurring revenue — without a spreadsheet anywhere in the loop.
 
 1. [What this solves](#1-what-this-solves)
 2. [The five scenes, mapped to features](#2-the-five-scenes-mapped-to-features)
-3. [Tech stack](#3-tech-stack)
+3. [Tech stack & system architecture](#3-tech-stack)
 4. [Run it in VS Code (step by step)](#4-run-it-in-vs-code-step-by-step)
 5. [Demo accounts](#5-demo-accounts)
 6. [Push it to GitHub](#6-push-it-to-github)
 7. [Project structure](#7-project-structure)
 8. [How the hard parts work](#8-how-the-hard-parts-work)
 9. [API reference](#9-api-reference)
-10. [Testing](#10-testing)
+10. [Testing & CI/CD pipeline](#10-testing)
 11. [Troubleshooting](#11-troubleshooting)
 
 ---
@@ -162,6 +163,183 @@ shows their own records.
 | Validation | Hand-written guards + SQL constraints | Errors surface as readable messages, integrity is enforced by the database too |
 
 There is **no external service to configure**. Clone, `npm install`, seed, run — it works offline.
+
+### System architecture
+
+```mermaid
+flowchart TD
+  subgraph CLIENT_LAYER ["Presentation Layer (React 18 + Vite + Tailwind CSS)"]
+    direction TB
+    subgraph ROLES ["User Roles & Entry Points"]
+      AdminUser["Admin Lead"]
+      StaffUser["Staff Member"]
+      CustomerUser["Customer"]
+    end
+    Router["Client Router & Guards (React Router v6)"]
+    PublicUI["Public Auth (Login, Signup, Reset Password)"]
+    TeamUI["Team Workspace (Dashboard, Billing, Subs, Invoices, Reports)"]
+    PortalUI["Customer Portal (Catalog, Subscriptions, Invoices, Pay)"]
+    APIClient["API Client (JWT Bearer Token, Fetch Handler)"]
+
+    ROLES --> Router
+    Router --> PublicUI
+    Router --> TeamUI
+    Router --> PortalUI
+    PublicUI --> APIClient
+    TeamUI --> APIClient
+    PortalUI --> APIClient
+  end
+
+  subgraph API_GATEWAY ["API Gateway & Middleware (Express 4 :4000)"]
+    direction TB
+    CORS["CORS & Request Parser"]
+    RateLimit["Brute-Force Rate Limiter (/api/auth)"]
+    AuthGuard["JWT Auth & Role-Based Access Control (RBAC)"]
+    APIRouter["API Router (/api/*)"]
+
+    APIClient -->|HTTP / JSON| CORS
+    CORS --> RateLimit
+    RateLimit --> AuthGuard
+    AuthGuard --> APIRouter
+  end
+
+  subgraph BACKEND_SERVICES ["Domain Services & Business Logic"]
+    direction TB
+    AuthSvc["Auth & User Service (bcryptjs, Password Policy)"]
+    CatSvc["Catalogue Service (Products, Variants, Plans, Taxes)"]
+    SubEngine["Subscription Engine (State Machine, Plan Rules, Renewals)"]
+    BillingEngine["Billing Sweep Engine (Idempotent Sweep, Catch-up Billing)"]
+    DiscountEngine["Discount Engine (Best Rule Evaluator, Non-Stacking)"]
+    PaymentSvc["Payment Processor (Multi-Method, Reversals, Balance Sync)"]
+    ReportEngine["Reporting Engine (MRR, ARR, Aging, SQL Aggregates)"]
+    Scheduler["Daily Scheduler (Automated 6h Billing Sweeps)"]
+    MailActivity["Auxiliary Services (Mail Outbox, Activity Audit Trail)"]
+
+    APIRouter --> AuthSvc
+    APIRouter --> CatSvc
+    APIRouter --> SubEngine
+    APIRouter --> BillingEngine
+    APIRouter --> DiscountEngine
+    APIRouter --> PaymentSvc
+    APIRouter --> ReportEngine
+    APIRouter --> MailActivity
+    Scheduler -.->|Auto Trigger| BillingEngine
+  end
+
+  subgraph DATA_LAYER ["Data & Persistence Layer (SQLite via better-sqlite3)"]
+    direction TB
+    SQLiteDB[("SQLite Database: brightloop.db (WAL Mode, synchronous NORMAL)")]
+    
+    subgraph TABLES ["Relational Schema & Constraints"]
+      UsersTab["users / password_resets"]
+      CatTab["products / variants / plans / taxes / templates"]
+      SubsTab["subscriptions / subscription_lines"]
+      InvoicesTab["invoices (Partial Unique Index: sub_id, start, end)"]
+      PaymentsTab["payments / payment_methods"]
+      DiscountsTab["discounts / discount_usages"]
+      LogsTab["billing_runs / activity_logs / email_logs / settings"]
+    end
+
+    AuthSvc --> UsersTab
+    CatSvc --> CatTab
+    SubEngine --> SubsTab
+    BillingEngine --> InvoicesTab
+    DiscountEngine --> DiscountsTab
+    PaymentSvc --> PaymentsTab
+    ReportEngine --> InvoicesTab
+    ReportEngine --> PaymentsTab
+    MailActivity --> LogsTab
+    BillingEngine --> LogsTab
+
+    TABLES --> SQLiteDB
+  end
+```
+
+### Use case diagram
+
+The diagram below illustrates the role boundaries and operational workflows across customers, staff, and administrators:
+
+```mermaid
+flowchart LR
+  %% Actors
+  subgraph ACTORS ["Actors & Roles"]
+    Customer["Customer (Subscriber)"]
+    Staff["Staff Member (Ops & Sales)"]
+    Admin["Admin Lead (Finance & System)"]
+  end
+
+  %% System Boundary
+  subgraph SYSTEM ["Brightloop Subscription Management System"]
+    subgraph AUTH_UC ["Identity & Access Control"]
+      UC_Signup(["Sign Up & Enforce Password Policy"])
+      UC_Reset(["Request & Consume Reset Token"])
+      UC_Team(["Manage Staff & Team Access"])
+    end
+
+    subgraph CATALOG_UC ["Catalogue & Pricing Engine"]
+      UC_Catalog(["Browse Plans & Products"])
+      UC_Products(["Manage Products, Variants & Taxes"])
+      UC_Plans(["Configure Plans & Lifecycle Switches"])
+      UC_Discounts(["Define Discount Rules & Caps"])
+    end
+
+    subgraph SUB_UC ["Subscriptions & Lifecycle"]
+      UC_ReqSub(["Request Quotation / Plan"])
+      UC_ManageSub(["Drive State Machine (Draft -> Quote -> Confirm -> Active)"])
+      UC_SubControls(["Pause, Resume, Renew & Close Subscriptions"])
+      UC_ViewSubs(["View Scoped Subscriptions"])
+    end
+
+    subgraph BILLING_UC ["Invoicing & Automated Billing"]
+      UC_BillNow(["Bill Subscription Immediately"])
+      UC_Sweep(["Run Automated / Manual Billing Sweep"])
+      UC_SendInv(["Confirm, Send & Print Tax Invoices"])
+      UC_ViewInv(["View & Download Invoices"])
+    end
+
+    subgraph PAYMENT_UC ["Payments & Receivables"]
+      UC_RecordPay(["Record Payment (Multi-Method: UPI, Cards, Wire)"])
+      UC_ReversePay(["Reverse Payment & Reopen Invoice"])
+      UC_PayHist(["Track Payment History & Balances"])
+    end
+
+    subgraph REPORT_UC ["Financial Analytics & Governance"]
+      UC_Reports(["Live Dashboard KPIs, MRR, ARR & Aging"])
+      UC_Export(["CSV Data Export"])
+      UC_Settings(["Company Profile & Scheduler Settings"])
+    end
+  end
+
+  %% Customer Relationships
+  Customer --> UC_Signup
+  Customer --> UC_Reset
+  Customer --> UC_Catalog
+  Customer --> UC_ReqSub
+  Customer --> UC_ViewSubs
+  Customer --> UC_ViewInv
+  Customer --> UC_PayHist
+
+  %% Staff Relationships
+  Staff --> UC_Reset
+  Staff --> UC_Catalog
+  Staff --> UC_ManageSub
+  Staff --> UC_SubControls
+  Staff --> UC_BillNow
+  Staff --> UC_Sweep
+  Staff --> UC_SendInv
+  Staff --> UC_RecordPay
+  Staff --> UC_Reports
+  Staff --> UC_Export
+
+  %% Admin Relationships
+  Admin --> UC_Team
+  Admin --> UC_Products
+  Admin --> UC_Plans
+  Admin --> UC_Discounts
+  Admin --> UC_ReversePay
+  Admin --> UC_Settings
+  Admin -.->|inherits all actions| Staff
+```
 
 ---
 
@@ -551,11 +729,15 @@ Full request/response details: see [`docs/API.md`](docs/API.md).
 
 ## 10. Testing
 
-With both servers running (or just the API):
+### Running tests locally
 
 ```bash
+# Automated runner - automatically starts a test server instance if not running:
 npm test
-# or: node server/test/smoke.mjs
+
+# Or run directly against an already-running server (:4000):
+npm run test:smoke
+# (or: node server/test/smoke.mjs)
 ```
 
 `server/test/smoke.mjs` is a dependency-free script that exercises the real HTTP API and
@@ -577,6 +759,15 @@ Expected output:
 ```
 76 passed, 0 failed
 ```
+
+### CI/CD Pipeline (GitHub Actions)
+
+A complete continuous integration pipeline is configured at [`.github/workflows/ci.yml`](.github/workflows/ci.yml) and runs on every push and pull request to `main`:
+
+1. **Multi-Version Matrix Test**: Automatically tests against Node.js `18.x`, `20.x`, and `22.x` on Ubuntu runners.
+2. **Dependency & Database Setup**: Runs `npm run setup` and `npm run seed` to establish an isolated test database.
+3. **E2E Smoke Verification**: Executes all 76 smoke test assertions across auth, lifecycle, billing sweep, discounts, and reports.
+4. **Production Build & Verification**: Executes `npm run build` with Vite, verifies production asset generation (`dist/index.html`), and uploads the distribution artifact.
 
 ---
 

@@ -17,7 +17,8 @@
     "start": "npm --prefix server start",
     "build": "npm --prefix client run build",
     "preview": "npm run build && npm run start",
-    "test": "node server/test/smoke.mjs"
+    "test": "node server/test/runner.mjs",
+    "test:smoke": "node server/test/smoke.mjs"
   },
   "devDependencies": {
     "concurrently": "^9.0.1"
