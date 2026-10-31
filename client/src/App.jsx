@@ -80,6 +80,7 @@ export default function App() {
         <Route path="plans" element={<PlansPage />} />
         <Route path="taxes" element={<TaxesPage />} />
         <Route path="templates" element={<TemplatesPage />} />
+        <Route path="catalogue" element={<Navigate to="/app/products" replace />} />
         <Route path="discounts" element={<DiscountsPage />} />
         <Route path="customers" element={<CustomersPage />} />
         <Route path="customers/:id" element={<CustomerDetailPage />} />
