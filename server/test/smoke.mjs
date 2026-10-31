@@ -101,7 +101,14 @@ check('duplicate email rejected', r.status === 409, r.data?.error);
 section('PASSWORD RESET');
 
 r = await call('POST', '/auth/forgot-password', { email: `ok${tag}@example.com` });
-const resetToken = r.data?.dev_token;
+let resetToken = r.data?.dev_token;
+// In production the token is never returned inline — read it from the outbox,
+// which also proves the reset email was actually queued.
+if (!resetToken) {
+  const mail = await call('GET', '/mail?category=password_reset', undefined, ADMIN);
+  const body = mail.data?.rows?.[0]?.body || '';
+  resetToken = /token=([a-f0-9]+)/.exec(body)?.[1] || null;
+}
 check('reset token issued', Boolean(resetToken));
 
 r = await call('POST', '/auth/reset-password', { token: resetToken, password: 'NewPass@1234' });

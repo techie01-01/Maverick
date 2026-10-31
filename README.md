@@ -588,6 +588,8 @@ Expected output:
 | `Error: Cannot find module 'better-sqlite3'` | Run `npm run setup` again; if it tried to compile, install Python 3 + build tools |
 | `no such table: users` | You opened an older database. Run `npm run reset` |
 | Login says *Invalid email or password* | You may have reset the data. Re-run `npm run seed` and use the demo credentials |
+| Sign-in shows **Authentication required** | The browser refused to store the session token (sandboxed iframe, or storage blocked). The client now falls back to in-memory storage, so make sure you are on the latest build: `npm run build`. If the page was loaded before the API finished booting, just retry |
+| Page loads but nothing happens on **Sign in** | The API is not running. `curl http://localhost:4000/api/health` should return `{"ok":true…}`; if not, `npm run dev:server` |
 | Port 4000 already in use | `PORT=4100 npm run dev:server`, then start the client with `VITE_API_TARGET=http://localhost:4100 npm run dev:client` |
 | Port 5173 already in use | Vite picks the next free port automatically — read the terminal output |
 | Blank page after `npm run build && npm start` | Hard-refresh (`Ctrl+Shift+R`); make sure `client/dist` exists |

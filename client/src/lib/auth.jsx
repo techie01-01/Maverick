@@ -38,8 +38,11 @@ export function AuthProvider({ children }) {
     const res = await post('/auth/login', { email, password });
     setToken(res.token);
     setUser(res.user);
-    const me = await get('/auth/me');
-    setSettings(me.settings || {});
+    // Settings are a nicety — never let them fail an otherwise good sign-in.
+    try {
+      const me = await get('/auth/me');
+      setSettings(me.settings || {});
+    } catch { /* keep defaults */ }
     return res.user;
   }, []);
 
@@ -47,8 +50,10 @@ export function AuthProvider({ children }) {
     const res = await post('/auth/signup', payload);
     setToken(res.token);
     setUser(res.user);
-    const me = await get('/auth/me');
-    setSettings(me.settings || {});
+    try {
+      const me = await get('/auth/me');
+      setSettings(me.settings || {});
+    } catch { /* keep defaults */ }
     return res.user;
   }, []);
 

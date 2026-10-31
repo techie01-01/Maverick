@@ -1,7 +1,27 @@
 const TOKEN_KEY = 'brightloop.token';
 
-export const getToken = () => localStorage.getItem(TOKEN_KEY);
-export const setToken = (t) => (t ? localStorage.setItem(TOKEN_KEY, t) : localStorage.removeItem(TOKEN_KEY));
+/**
+ * Token storage with an in-memory fallback.
+ *
+ * localStorage throws in a sandboxed iframe (and is disabled in some private
+ * modes), so every access is guarded. When it is unavailable the session still
+ * works — it just does not survive a page reload.
+ */
+const memoryStore = new Map();
+const store = {
+  get(key) {
+    try { return window.localStorage.getItem(key); } catch { return memoryStore.get(key) ?? null; }
+  },
+  set(key, value) {
+    try { window.localStorage.setItem(key, value); } catch { memoryStore.set(key, value); }
+  },
+  del(key) {
+    try { window.localStorage.removeItem(key); } catch { memoryStore.delete(key); }
+  },
+};
+
+export const getToken = () => store.get(TOKEN_KEY);
+export const setToken = (t) => (t ? store.set(TOKEN_KEY, t) : store.del(TOKEN_KEY));
 
 export class ApiError extends Error {
   constructor(status, message, details) {
