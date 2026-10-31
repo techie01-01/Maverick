@@ -11,6 +11,7 @@ recurring revenue — without a spreadsheet anywhere in the loop.
 ![API](https://img.shields.io/badge/API-70%2B%20endpoints-10b981)
 ![Tests](https://img.shields.io/badge/smoke%20tests-76%20passing-10b981)
 ![CI/CD](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-2088FF?logo=github-actions&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white)
 
 ---
 
@@ -19,7 +20,7 @@ recurring revenue — without a spreadsheet anywhere in the loop.
 1. [What this solves](#1-what-this-solves)
 2. [The five scenes, mapped to features](#2-the-five-scenes-mapped-to-features)
 3. [Tech stack & system architecture](#3-tech-stack)
-4. [Run it in VS Code (step by step)](#4-run-it-in-vs-code-step-by-step)
+4. [Run the application (Docker & Local)](#4-run-the-application)
 5. [Demo accounts](#5-demo-accounts)
 6. [Push it to GitHub](#6-push-it-to-github)
 7. [Project structure](#7-project-structure)
@@ -343,7 +344,37 @@ flowchart LR
 
 ---
 
-## 4. Run it in VS Code (step by step)
+## 4. Run the application
+
+### Option A: Run with Docker (One-command setup)
+
+The entire platform (API, built React client, SQLite database, and auto-seeder) is fully containerized:
+
+```bash
+# Start the full platform with Docker Compose:
+docker compose up -d
+
+# Check health and container status:
+docker compose ps
+
+# Follow live server logs:
+docker compose logs -f
+```
+
+The application is immediately available at **http://localhost:4000** with pre-seeded demo accounts.
+
+To stop the container:
+```bash
+docker compose down
+```
+
+Or using Docker directly:
+```bash
+docker build -t brightloop:latest .
+docker run -d -p 4000:4000 --name brightloop-app brightloop:latest
+```
+
+### Option B: Run locally in VS Code (step by step)
 
 ### Prerequisites
 
