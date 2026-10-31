@@ -1,0 +1,25 @@
+{
+  "name": "brightloop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Brightloop — a unified subscription management, recurring billing, invoicing and revenue reporting platform.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.18.0"
+  },
+  "scripts": {
+    "setup": "npm install && npm --prefix server install && npm --prefix client install",
+    "seed": "npm --prefix server run seed",
+    "reset": "npm --prefix server run reset",
+    "dev": "concurrently -n api,web -c cyan,magenta \"npm:dev:server\" \"npm:dev:client\"",
+    "dev:server": "npm --prefix server run dev",
+    "dev:client": "npm --prefix client run dev",
+    "start": "npm --prefix server start",
+    "build": "npm --prefix client run build",
+    "preview": "npm run build && npm run start",
+    "test": "node server/test/smoke.mjs"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.1"
+  }
+}

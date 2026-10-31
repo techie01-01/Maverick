@@ -1,0 +1,24 @@
+{
+  "name": "brightloop-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Brightloop Subscription Management System - API server",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "node --watch src/index.js",
+    "start": "node src/index.js",
+    "seed": "node src/seed.js",
+    "reset": "node src/seed.js --force"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "better-sqlite3": "^11.5.0",
+    "cors": "^2.8.5",
+    "dayjs": "^1.11.13",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
+    "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.0"
+  }
+}

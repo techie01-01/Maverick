@@ -1,0 +1,17 @@
+{
+  "editor.formatOnSave": false,
+  "javascript.preferences.importModuleSpecifier": "relative",
+  "files.eol": "\n",
+  "files.exclude": {
+    "**/node_modules": true,
+    "**/client/dist": true
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/client/dist": true,
+    "**/package-lock.json": true
+  },
+  "tailwindCSS.experimental.classRegex": [
+    ["cn\\(([^)]*)\\)", "'([^']*)'"]
+  ]
+}
