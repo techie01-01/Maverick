@@ -325,15 +325,23 @@ Every seeded customer uses `Customer@1234`. Other customer emails follow the pat
 1. Create an empty repository on GitHub: **github.com → New repository**.
    Name it `brightloop`, leave *Add a README* **unchecked**, and copy the URL.
 
-2. In the project folder, initialise git and push (replace the URL with yours):
+2. This folder is **already a git repository with one commit** (54 files, no `node_modules`,
+   no database). Point it at your new remote and push:
 
 ```bash
 cd brightloop
 
+git remote add origin https://github.com/<your-username>/brightloop.git
+git branch -M main
+git push -u origin main
+```
+
+   Prefer to start the history yourself? `rm -rf .git`, then:
+
+```bash
 git init
 git add .
 git commit -m "feat: Brightloop subscription management system"
-
 git branch -M main
 git remote add origin https://github.com/<your-username>/brightloop.git
 git push -u origin main
@@ -386,6 +394,7 @@ brightloop/
 ├── package.json                 # root scripts: setup / seed / dev / build / start / test
 ├── README.md
 ├── .gitignore
+├── .vscode/                     # recommended extensions + F5 debug configs
 │
 ├── server/                      # Express + SQLite API
 │   ├── .env.example
