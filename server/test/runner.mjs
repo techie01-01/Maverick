@@ -6,30 +6,35 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const serverPath = path.resolve(__dirname, '../src/index.js');
 const smokePath = path.resolve(__dirname, 'smoke.mjs');
-const BASE = process.env.API_BASE || `http://localhost:${process.env.PORT || 4000}/api`;
+const PORT = process.env.PORT || '4000';
+const BASE = process.env.API_BASE || `http://127.0.0.1:${PORT}/api`;
 
 let spawnedServer = null;
 
 async function isServerReady() {
-  try {
-    const res = await fetch(`${BASE}/health`, { signal: AbortSignal.timeout(1500) });
-    return res.ok;
-  } catch {
-    return false;
+  for (const host of ['127.0.0.1', 'localhost']) {
+    try {
+      const res = await fetch(`http://${host}:${PORT}/api/health`);
+      if (res.ok) return true;
+    } catch {}
   }
+  return false;
 }
 
 try {
   let ready = await isServerReady();
   if (!ready) {
     console.log('[test-runner] Server not detected; launching test server instance...');
+    let serverOutput = [];
     spawnedServer = spawn(process.execPath, [serverPath], {
-      stdio: 'ignore',
-      env: { ...process.env, PORT: process.env.PORT || '4000' },
+      env: { ...process.env, PORT },
     });
 
-    for (let i = 0; i < 30; i++) {
-      await new Promise((r) => setTimeout(r, 400));
+    spawnedServer.stdout?.on('data', (d) => serverOutput.push(d.toString()));
+    spawnedServer.stderr?.on('data', (d) => serverOutput.push(d.toString()));
+
+    for (let i = 0; i < 40; i++) {
+      await new Promise((r) => setTimeout(r, 300));
       if (await isServerReady()) {
         ready = true;
         break;
@@ -38,14 +43,19 @@ try {
 
     if (!ready) {
       console.error('[test-runner] Error: Server failed to start within timeout.');
-      if (spawnedServer) spawnedServer.kill();
+      if (serverOutput.length > 0) {
+        console.error('[server output]\n' + serverOutput.join(''));
+      }
+      if (spawnedServer) {
+        try { spawnedServer.kill(); } catch {}
+      }
       process.exit(1);
     }
   }
 
   const smoke = spawn(process.execPath, [smokePath], {
     stdio: 'inherit',
-    env: process.env,
+    env: { ...process.env, API_BASE: BASE },
   });
 
   smoke.on('exit', (code) => {
@@ -65,4 +75,3 @@ try {
   console.error('[test-runner] Unexpected error:', err);
   process.exit(1);
 }
-
