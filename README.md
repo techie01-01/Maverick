@@ -21,7 +21,7 @@ recurring revenue — without a spreadsheet anywhere in the loop.
 
 1. [What this solves](#1-what-this-solves)
 2. [The five scenes, mapped to features](#2-the-five-scenes-mapped-to-features)
-3. [Tech stack & system architecture](#3-tech-stack)
+3. [Tech stack, architecture & database design](#3-tech-stack)
 4. [Run the application (Docker & Local)](#4-run-the-application)
 5. [Demo accounts](#5-demo-accounts)
 6. [Project structure](#6-project-structure)
@@ -371,6 +371,304 @@ flowchart LR
   Admin --> UC_ReversePay
   Admin --> UC_Settings
   Admin -.->|inherits all actions| Staff
+```
+
+### Database design (Entity-Relationship Diagram)
+
+The SQLite database (`server/data/brightloop.db`) is tuned for transactional integrity and high-concurrency read-heavy billing (`journal_mode = WAL`, `synchronous = NORMAL`, `foreign_keys = ON`, `temp_store = MEMORY`).
+
+The ER diagram below details the 21 relational tables, data types, keys, and entity cardinality across user accounts, the product catalogue, subscription state engines, billing cycles, invoices, payments, and audit logs:
+
+```mermaid
+erDiagram
+    %% Identity and Access
+    USERS ||--o{ PASSWORD_RESETS : "requests"
+    USERS ||--o{ SUBSCRIPTIONS : "customer owns"
+    USERS ||--o{ INVOICES : "billed to"
+    USERS ||--o{ PAYMENTS : "payer"
+    USERS ||--o{ ACTIVITY_LOG : "performed by"
+
+    %% Catalogue & Rules
+    PRODUCTS ||--o{ PRODUCT_VARIANTS : "defines variants"
+    PRODUCTS ||--o{ PRODUCT_TAXES : "applies tax"
+    TAXES ||--o{ PRODUCT_TAXES : "linked to"
+    PRODUCTS ||--o{ PLANS : "packaged in"
+    PRODUCTS ||--o{ DISCOUNT_PRODUCTS : "discount eligible"
+    DISCOUNTS ||--o{ DISCOUNT_PRODUCTS : "scopes"
+
+    %% Quotations
+    PLANS ||--o{ QUOTATION_TEMPLATES : "basis for"
+    QUOTATION_TEMPLATES ||--o{ QUOTATION_TEMPLATE_LINES : "contains"
+    PRODUCTS ||--o{ QUOTATION_TEMPLATE_LINES : "references"
+    PRODUCT_VARIANTS |o--o{ QUOTATION_TEMPLATE_LINES : "variant choice"
+
+    %% Subscriptions
+    PLANS ||--o{ SUBSCRIPTIONS : "subscribes to"
+    QUOTATION_TEMPLATES |o--o{ SUBSCRIPTIONS : "instantiated from"
+    SUBSCRIPTIONS ||--o{ SUBSCRIPTION_LINES : "contains"
+    PRODUCTS ||--o{ SUBSCRIPTION_LINES : "line item"
+    PRODUCT_VARIANTS |o--o{ SUBSCRIPTION_LINES : "variant applied"
+
+    %% Invoicing & Payments
+    SUBSCRIPTIONS ||--o{ INVOICES : "generates recurring"
+    INVOICES ||--o{ INVOICE_LINES : "itemizes"
+    INVOICES ||--o{ INVOICE_TAXES : "tax breakdown"
+    INVOICES ||--o{ PAYMENTS : "settled by"
+    PRODUCTS ||--o{ INVOICE_LINES : "billed item"
+    PRODUCT_VARIANTS |o--o{ INVOICE_LINES : "variant billed"
+
+    %% Discounts & Operations
+    DISCOUNTS ||--o{ DISCOUNT_USAGES : "tracked in"
+    INVOICES ||--o{ DISCOUNT_USAGES : "applied on"
+    SUBSCRIPTIONS ||--o{ DISCOUNT_USAGES : "redeemed on"
+
+    USERS {
+        INTEGER id PK
+        TEXT email UK
+        TEXT password_hash
+        TEXT name
+        TEXT role "admin / staff / customer"
+        TEXT company_name
+        TEXT phone
+        TEXT address
+        TEXT city
+        TEXT country
+        TEXT tax_id
+        INTEGER is_active
+        INTEGER must_reset
+        TEXT created_at
+    }
+
+    PASSWORD_RESETS {
+        INTEGER id PK
+        INTEGER user_id FK
+        TEXT token UK
+        TEXT expires_at
+        TEXT used_at
+    }
+
+    PRODUCTS {
+        INTEGER id PK
+        TEXT name
+        TEXT sku UK
+        TEXT type "service / goods / digital"
+        REAL sales_price
+        REAL cost_price
+        INTEGER is_active
+    }
+
+    PRODUCT_VARIANTS {
+        INTEGER id PK
+        INTEGER product_id FK
+        TEXT attribute_name
+        TEXT attribute_value
+        REAL price_extra
+        TEXT sku
+        INTEGER is_active
+    }
+
+    TAXES {
+        INTEGER id PK
+        TEXT name
+        TEXT code
+        REAL rate
+        TEXT kind "percent / fixed"
+        REAL fixed_amount
+        TEXT applies_to
+        INTEGER included_in_price
+        INTEGER is_active
+    }
+
+    PRODUCT_TAXES {
+        INTEGER product_id FK "Composite PK"
+        INTEGER tax_id FK "Composite PK"
+    }
+
+    PLANS {
+        INTEGER id PK
+        TEXT name
+        TEXT code UK
+        INTEGER product_id FK
+        TEXT billing_period "daily / weekly / monthly / yearly"
+        INTEGER interval_count
+        REAL price
+        INTEGER min_quantity
+        INTEGER allow_close
+        INTEGER allow_pause
+        INTEGER allow_renew
+        INTEGER close_on_end
+        INTEGER is_active
+    }
+
+    QUOTATION_TEMPLATES {
+        INTEGER id PK
+        TEXT name
+        INTEGER plan_id FK
+        INTEGER validity_days
+        TEXT payment_term
+        INTEGER quantity
+        INTEGER is_active
+    }
+
+    QUOTATION_TEMPLATE_LINES {
+        INTEGER id PK
+        INTEGER template_id FK
+        INTEGER product_id FK
+        INTEGER variant_id FK
+        REAL quantity
+        REAL unit_price
+        REAL discount_pct
+    }
+
+    DISCOUNTS {
+        INTEGER id PK
+        TEXT code UK
+        TEXT name
+        TEXT kind "percent / fixed"
+        REAL value
+        REAL min_purchase
+        INTEGER min_quantity
+        TEXT start_date
+        TEXT end_date
+        INTEGER max_uses
+        INTEGER used_count
+        TEXT applies_to
+        INTEGER is_active
+    }
+
+    DISCOUNT_PRODUCTS {
+        INTEGER discount_id FK "Composite PK"
+        INTEGER product_id FK "Composite PK"
+    }
+
+    SUBSCRIPTIONS {
+        INTEGER id PK
+        TEXT number UK
+        INTEGER customer_id FK
+        INTEGER plan_id FK
+        INTEGER template_id FK
+        TEXT state "draft / quotation / confirmed / active / paused / closed / cancelled"
+        TEXT start_date
+        TEXT expiry_date
+        INTEGER quantity
+        REAL unit_price
+        TEXT payment_term
+        INTEGER auto_renew
+        INTEGER renewal_count
+        TEXT next_billing_date
+        TEXT last_billed_until
+    }
+
+    SUBSCRIPTION_LINES {
+        INTEGER id PK
+        INTEGER subscription_id FK
+        INTEGER product_id FK
+        INTEGER variant_id FK
+        TEXT label
+        REAL quantity
+        REAL unit_price
+        REAL discount_pct
+        TEXT tax_ids
+        INTEGER is_plan_line
+    }
+
+    INVOICES {
+        INTEGER id PK
+        TEXT number UK
+        INTEGER subscription_id FK
+        INTEGER customer_id FK
+        TEXT state "draft / confirmed / paid / cancelled"
+        TEXT invoice_date
+        TEXT due_date
+        TEXT period_start
+        TEXT period_end
+        REAL subtotal
+        REAL discount_total
+        REAL tax_total
+        REAL total
+        REAL amount_paid
+        REAL balance
+    }
+
+    INVOICE_LINES {
+        INTEGER id PK
+        INTEGER invoice_id FK
+        INTEGER product_id FK
+        INTEGER variant_id FK
+        TEXT description
+        REAL quantity
+        REAL unit_price
+        REAL discount_amount
+        REAL tax_rate
+        REAL tax_amount
+        REAL amount
+    }
+
+    INVOICE_TAXES {
+        INTEGER id PK
+        INTEGER invoice_id FK
+        INTEGER tax_id
+        TEXT name
+        REAL rate
+        REAL base
+        REAL amount
+    }
+
+    PAYMENTS {
+        INTEGER id PK
+        TEXT number UK
+        INTEGER invoice_id FK
+        INTEGER customer_id FK
+        TEXT method "bank_transfer / upi / card / cash"
+        REAL amount
+        TEXT payment_date
+        TEXT reference
+    }
+
+    DISCOUNT_USAGES {
+        INTEGER id PK
+        INTEGER discount_id FK
+        INTEGER invoice_id FK
+        INTEGER subscription_id FK
+        INTEGER customer_id FK
+        REAL amount
+        TEXT applied_on
+    }
+
+    BILLING_RUNS {
+        INTEGER id PK
+        TEXT trigger_source "manual / scheduler"
+        TEXT as_of_date
+        TEXT status
+        INTEGER subscriptions_swept
+        INTEGER invoices_created
+        INTEGER invoices_skipped
+        REAL total_amount
+        INTEGER duration_ms
+        TEXT started_at
+        TEXT finished_at
+    }
+
+    ACTIVITY_LOG {
+        INTEGER id PK
+        INTEGER user_id FK
+        TEXT actor
+        TEXT action
+        TEXT entity
+        INTEGER entity_id
+        TEXT summary
+        TEXT created_at
+    }
+
+    MAIL_OUTBOX {
+        INTEGER id PK
+        TEXT to_email
+        TEXT subject
+        TEXT body
+        TEXT category
+        TEXT status
+        TEXT created_at
+    }
 ```
 
 ---
