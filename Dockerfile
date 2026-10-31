@@ -51,3 +51,4 @@ HEALTHCHECK --interval=15s --timeout=3s --start-period=5s --retries=3 \
 
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
 CMD ["node", "server/src/index.js"]
+

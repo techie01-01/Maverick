@@ -18,9 +18,11 @@
     "build": "npm --prefix client run build",
     "preview": "npm run build && npm run start",
     "test": "node server/test/runner.mjs",
-    "test:smoke": "node server/test/smoke.mjs"
+    "test:smoke": "node server/test/smoke.mjs",
+    "screenshots": "node scripts/capture.mjs"
   },
   "devDependencies": {
-    "concurrently": "^9.0.1"
+    "concurrently": "^9.0.1",
+    "puppeteer-core": "^25.16.0"
   }
 }

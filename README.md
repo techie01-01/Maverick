@@ -13,6 +13,8 @@ recurring revenue — without a spreadsheet anywhere in the loop.
 ![CI/CD](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-2088FF?logo=github-actions&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white)
 
+![Brightloop Executive Dashboard](docs/screenshots/02-dashboard.png)
+
 ---
 
 ## Table of contents
@@ -22,12 +24,11 @@ recurring revenue — without a spreadsheet anywhere in the loop.
 3. [Tech stack & system architecture](#3-tech-stack)
 4. [Run the application (Docker & Local)](#4-run-the-application)
 5. [Demo accounts](#5-demo-accounts)
-6. [Push it to GitHub](#6-push-it-to-github)
-7. [Project structure](#7-project-structure)
-8. [How the hard parts work](#8-how-the-hard-parts-work)
-9. [API reference](#9-api-reference)
-10. [Testing & CI/CD pipeline](#10-testing)
-11. [Troubleshooting](#11-troubleshooting)
+6. [Project structure](#6-project-structure)
+7. [How the hard parts work](#7-how-the-hard-parts-work)
+8. [API reference](#8-api-reference)
+9. [Testing & CI/CD pipeline](#9-testing)
+10. [Troubleshooting](#10-troubleshooting)
 
 ---
 
@@ -63,6 +64,8 @@ shows their own records.
 - A customer hitting `/app/subscriptions/999` gets a 403, not someone else's data.
 
 *Screen:* `/login`, `/signup`, `/forgot-password`, `/reset-password`, `Team & access`
+
+![Authentication and Password Policy](docs/screenshots/01-login.png)
 </details>
 
 <details open>
@@ -78,6 +81,8 @@ shows their own records.
   The server refuses a transition the plan does not allow.
 
 *Screen:* `/app/products`, `/app/plans`, `/app/taxes`
+
+![Products Catalogue and Plans](docs/screenshots/10-catalogue.png)
 </details>
 
 <details open>
@@ -92,6 +97,9 @@ shows their own records.
   as side states). The detail page shows a stepper so anyone on the team can see where it stands.
 
 *Screen:* `/app/templates`, `/app/subscriptions`, `/app/subscriptions/:id`
+
+![Subscription Management](docs/screenshots/03-subscriptions.png)
+![Subscription Detail and Lifecycle Stepper](docs/screenshots/04-subscription-detail.png)
 </details>
 
 <details open>
@@ -111,6 +119,9 @@ shows their own records.
   **Draft → Confirmed → Paid**.
 
 *Screen:* `/app/billing`, `/app/invoices`, `/app/invoices/:id` (print-ready A4 sheet)
+
+![Invoices Management](docs/screenshots/05-invoices.png)
+![Invoice Detail and Tax Summary](docs/screenshots/06-invoice-detail.png)
 </details>
 
 <details open>
@@ -129,6 +140,8 @@ shows their own records.
   Exhausted, and a simulator shows which rule would fire for a given order.
 
 *Screen:* `/app/discounts`
+
+![Discount Rules and Order Simulator](docs/screenshots/08-discounts.png)
 </details>
 
 <details open>
@@ -144,8 +157,24 @@ shows their own records.
 - **Reports** add date filters, grouping by month / customer / plan / payment method,
   receivables ageing buckets (current, 1–30, 31–60, 61–90, 90+), churn and CSV export.
 - **Performance:** every list is paginated and every hot query is indexed. With the seeded
-  dataset (650+ invoices, 570+ payments) all report endpoints answer in **under 10 ms** —
+  dataset (650+ invoices, 570+ payments) all report endpoints answer in **under 10 ms** ?
   the test suite asserts the two-second budget.
+
+*Screen:* `/app/reports`, `/app/billing`
+
+![Revenue and Receivables Analytics](docs/screenshots/09-reports.png)
+![Automated Billing Sweep](docs/screenshots/07-billing-sweep.png)
+</details>
+
+<details open>
+<summary><strong>Scene 7 ? Customer Self-Service Portal</strong></summary>
+
+- Customers log into their own dedicated portal (`/portal`) to browse plans, request new subscriptions, view active services, inspect past invoices, and track payment history.
+- Strict isolation ensures customers only ever access their own records.
+
+*Screen:* `/portal`, `/portal/plans`, `/portal/subscriptions`, `/portal/invoices`
+
+![Customer Self-Service Portal](docs/screenshots/11-customer-portal.png)
 </details>
 
 ---
@@ -390,11 +419,9 @@ docker run -d -p 4000:4000 --name brightloop-app brightloop:latest
 
 ```bash
 cd ~/projects            # or wherever you keep code
-git clone <your-repo-url> brightloop
+git clone https://github.com/techie01-01/Maverick.git brightloop
 cd brightloop
-```
-
-(Not on GitHub yet? See [section 6](#6-push-it-to-github) — or just open the folder you already have.)
+``` — or just open the folder you already have.)
 
 ### 2. Open the folder in VS Code
 
@@ -527,76 +554,7 @@ Every seeded customer uses `Customer@1234`. Other customer emails follow the pat
 
 ---
 
-## 6. Push it to GitHub
-
-### Option A — brand-new repository (recommended)
-
-1. Create an empty repository on GitHub: **github.com → New repository**.
-   Name it `brightloop`, leave *Add a README* **unchecked**, and copy the URL.
-
-2. This folder is **already a git repository with one commit** (54 files, no `node_modules`,
-   no database). Point it at your new remote and push:
-
-```bash
-cd brightloop
-
-git remote add origin https://github.com/<your-username>/brightloop.git
-git branch -M main
-git push -u origin main
-```
-
-   Prefer to start the history yourself? `rm -rf .git`, then:
-
-```bash
-git init
-git add .
-git commit -m "feat: Brightloop subscription management system"
-git branch -M main
-git remote add origin https://github.com/<your-username>/brightloop.git
-git push -u origin main
-```
-
-3. If GitHub asks for a password, use a **Personal Access Token** instead
-   (*GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic) →
-   Generate new token*, scope `repo`). Paste the token when prompted for the password.
-
-   Or push over SSH:
-
-```bash
-git remote set-url origin git@github.com:<your-username>/brightloop.git
-git push -u origin main
-```
-
-### Option B — you already have a repo
-
-```bash
-git remote add origin https://github.com/<your-username>/<repo>.git
-git add .
-git commit -m "feat: Brightloop subscription management system"
-git push -u origin main
-```
-
-### Pushing from inside VS Code
-
-1. Open the **Source Control** panel (`Ctrl+Shift+G`).
-2. Click **Initialize Repository** if it is not already initialised.
-3. Stage everything with **+**, type a message, then **Commit**.
-4. **Publish Branch** → choose *Public* or *Private* → pick the account → done.
-   (VS Code creates the remote repository for you.)
-
-### What gets committed
-
-`.gitignore` already excludes `node_modules/`, `dist/`, `server/data/*.db` and `.env` —
-so you will not push a 30 MB database or your secrets. Anyone who clones the repo runs
-`npm run seed` to get the demo data.
-
-> **Note on the database.** If you *want* to ship the seeded database with the repo so
-> reviewers see data on first run, remove the `server/data/` line from `.gitignore`. The
-> README instructions assume it is regenerated instead.
-
----
-
-## 7. Project structure
+## 6. Project structure
 
 ```
 brightloop/
@@ -658,7 +616,7 @@ brightloop/
 
 ---
 
-## 8. How the hard parts work
+## 7. How the hard parts work
 
 ### Nothing billed twice, nothing skipped
 
@@ -711,7 +669,7 @@ month ends (31 Jan + 1 month → 28/29 Feb).
 
 ---
 
-## 9. API reference
+## 8. API reference
 
 Base URL: `http://localhost:4000/api` · Auth: `Authorization: Bearer <jwt>`
 
@@ -758,7 +716,7 @@ Full request/response details: see [`docs/API.md`](docs/API.md).
 
 ---
 
-## 10. Testing
+## 9. Testing & CI/CD pipeline
 
 ### Running tests locally
 
@@ -802,7 +760,7 @@ A complete continuous integration pipeline is configured at [`.github/workflows/
 
 ---
 
-## 11. Troubleshooting
+## 10. Troubleshooting
 
 | Symptom | Fix |
 | --- | --- |
