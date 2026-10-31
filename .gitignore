@@ -44,3 +44,6 @@ Thumbs.db
 .turbo/
 .vite/
 coverage/
+
+# Graphify knowledge graph
+graphify-out/
